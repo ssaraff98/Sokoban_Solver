@@ -3,50 +3,6 @@ import os, sys
 import datetime, time
 import argparse
 
-def __stuck_on_wall__(s, problem):
-    map = problem.map
-    farthestL = 1000
-    farthestR = -1000
-    farthestU = 1000
-    farthestD = -1000
-    boxes = s.data[1:]
-
-    for x in range(len(map)):
-        for y in range(len(map[x])):
-            if map[x][y].wall is True:
-                # if farthestL is None:
-                #     farthestL = x
-                # elif farthestU is None:
-                #     farthestU = y
-                # elif farthestR is None:
-                #     farthestR = x
-                # elif farthestD is None:
-                #     farthestD = y
-
-                if farthestL > x:
-                    farthestL = x
-                if farthestU > y:
-                    farthestU = y
-                if farthestR < x:
-                    farthestR = x
-                if farthestD < y:
-                    farthestD = y
-
-    for target in problem.targets:
-        for box in boxes:
-            if target[0] == box[0] or target[1] == box[1]:
-                return False
-    for box in boxes:
-        if box[0] <= farthestL + 1:
-            return True
-        elif box[0] >= farthestR - 1:
-            return True
-        elif box[1] <= farthestU + 1:
-            return True
-        elif box[1] >= farthestD - 1:
-            return True
-    else: return False
-
 class SokobanState:
     # player: 2-tuple representing player location (coordinates)
     # boxes: list of 2-tuples indicating box locations
@@ -88,31 +44,55 @@ class SokobanState:
             return val
 
     def dead_corner(self, map, x, y):
-        left, right, up, down = False, False, False, False
-        if map[x - 1][y].wall == True:# and map[x - 1][y].target == False:
-            left = True
-        if map[x + 1][y].wall == True:# and map[x + 1][y].target == False:
-            right = True
-        if map[x][y - 1].wall == True:# and map[x][y - 1].target == False:
-            up = True
-        if map[x][y + 1].wall == True:# and map[x][y + 1].target == False:
-            down = True
-        # walls = 0
+        walls = 0
 
-        # if map[x - 1][y].wall == True:
-        #     walls += 1
-        # if map[x + 1][y].wall == True:
-        #     walls += 1
-        # if map[x][y - 1].wall == True:
-        #     walls += 1
-        # if map[x][y + 1].wall == True:
-        #     walls += 1
-        #
-        # if walls >= 3:
-        #     return True
+        if map[x - 1][y].wall == True:
+            walls += 1
+        if map[x + 1][y].wall == True:
+            walls += 1
+        if map[x][y - 1].wall == True:
+            walls += 1
+        if map[x][y + 1].wall == True:
+            walls += 1
 
-        if (left or right) and (up or down):
+        if walls >= 3:
             return True
+
+    def stuck_on_wall(self, problem):
+        map = problem.map
+        farthestL = 1000
+        farthestR = -1000
+        farthestU = 1000
+        farthestD = -1000
+
+        for x in range(len(map)):
+            for y in range(len(map[x])):
+                if map[x][y].wall is True:
+                    if farthestL > x:
+                        farthestL = x
+                    if farthestU > y:
+                        farthestU = y
+                    if farthestR < x:
+                        farthestR = x
+                    if farthestD < y:
+                        farthestD = y
+
+        for target in problem.targets:
+            for box in self.boxes():
+                if target[0] == box[0] or target[1] == box[1]:
+                    return False
+
+        for box in self.boxes():
+            if box[0] <= farthestL + 1:
+                return True
+            elif box[0] >= farthestR - 1:
+                return True
+            elif box[1] <= farthestU + 1:
+                return True
+            elif box[1] >= farthestD - 1:
+                return True
+        else:
+            return False
 
     def has_wall_box(self, map, x, y):
         if map[x - 1][y].wall == True or map[x + 1][y].wall == True or map[x][y - 1].wall == True or map[x][y + 1].wall == True:
@@ -134,13 +114,15 @@ class SokobanState:
         map = problem.map
 
         for x, y in self.boxes():
-            if __stuck_on_wall__(self, problem):
+            if self.stuck_on_wall(problem):
                 self.dead = True
             else:
                 self.dead = False
-            # self.dead = self.dead_corner(map, x, y)
+
             if not self.dead:
                 self.dead = self.has_wall_box(map, x, y)
+
+            # self.dead = self.dead_corner(map, x, y)
             # if not self.dead:
             #self.dead = self.has_box_box(x, y)
 

@@ -16,15 +16,6 @@ def __stuck_on_wall__(s, problem):
     for x in range(len(map)):
         for y in range(len(map[x])):
             if map[x][y].wall is True:
-                # if farthestL is None:
-                #     farthestL = x
-                # elif farthestU is None:
-                #     farthestU = y
-                # elif farthestR is None:
-                #     farthestR = x
-                # elif farthestD is None:
-                #     farthestD = y
-
                 if farthestL > x:
                     farthestL = x
                 if farthestU > y:

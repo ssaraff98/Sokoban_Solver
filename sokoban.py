@@ -39,22 +39,21 @@ class SokobanState:
             self.adj[act] = val
             return val
     def deadp(self, problem):
-        dead = False
+        self.dead = False
         map = problem.map
-        for i in range(len(map)):
-            for j in range(len(map[0])):
-                if map[i][j] == '*':
-                    adjWalls = 0
-                    if map[i + 1][j] == '#':
-                        adjWalls += 1
-                    if map[i][j + 1] == '#':
-                        adjWalls += 1
-                    if map[i - 1][j] == '#':
-                        adjWalls += 1
-                    if map[i][j + 1] == '#':
-                        adjWalls += 1
-                if adjWalls >= 3:
-                    dead = True
+        for x, y in self.boxes():
+            walls = 0
+            if map[x - 1][y].wall == True:
+                walls += 1
+            elif map[x + 1][y].wall == True:
+                walls += 1
+            elif map[x][y - 1].wall == True:
+                walls += 1
+            elif map[x][y + 1].wall == True:
+                walls += 1
+                
+            if walls >= 3:
+                self.dead = True
 
         # if self.dead is None:
           #  raise NotImplementedError('Override me')

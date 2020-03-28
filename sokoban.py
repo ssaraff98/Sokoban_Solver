@@ -22,42 +22,81 @@ class SokobanState:
         return self.data < other.data
     def __hash__(self):
         return hash(self.data)
+
     # return player location
     def player(self):
         return self.data[0]
+
     # return boxes locations
     def boxes(self):
         return self.data[1:]
+
     def is_goal(self, problem):
         if self.solved is None:
             self.solved = all(problem.map[b[0]][b[1]].target for b in self.boxes())
         return self.solved
+
     def act(self, problem, act):
         if act in self.adj: return self.adj[act]
         else:
             val = problem.valid_move(self,act)
             self.adj[act] = val
             return val
-    def deadp(self, problem):
-        self.dead = False
-        map = problem.map
-        for x, y in self.boxes():
-            walls = 0
-            if map[x - 1][y].wall == True:
-                walls += 1
-            elif map[x + 1][y].wall == True:
-                walls += 1
-            elif map[x][y - 1].wall == True:
-                walls += 1
-            elif map[x][y + 1].wall == True:
-                walls += 1
-                
-            if walls >= 3:
-                self.dead = True
 
-        # if self.dead is None:
-          #  raise NotImplementedError('Override me')
+    def dead_corner(self, map, x, y):
+        left, right, up, down = False, False, False, False
+        if map[x - 1][y].wall == True:# and map[x - 1][y].target == False:
+            left = True
+        if map[x + 1][y].wall == True:# and map[x + 1][y].target == False:
+            right = True
+        if map[x][y - 1].wall == True:# and map[x][y - 1].target == False:
+            up = True
+        if map[x][y + 1].wall == True:# and map[x][y + 1].target == False:
+            down = True
+        # walls = 0
+
+        # if map[x - 1][y].wall == True:
+        #     walls += 1
+        # if map[x + 1][y].wall == True:
+        #     walls += 1
+        # if map[x][y - 1].wall == True:
+        #     walls += 1
+        # if map[x][y + 1].wall == True:
+        #     walls += 1
+        #
+        # if walls >= 3:
+        #     return True
+
+        if (left or right) and (up or down):
+            return True
+
+    def has_wall_box(self, map, x, y):
+        if map[x - 1][y].wall == True or map[x + 1][y].wall == True or map[x][y - 1].wall == True or map[x][y + 1].wall == True:
+            for i, j in self.boxes():
+                if i == x and j == y:
+                    continue
+                if ((x - 1) == i and y == j) or ((x + 1) == i and y == j) or (x == i and (y - 1) == j) or (x == i and (y + 1) == j):
+                    return True
+
+    def has_box_box(self, x, y):
+        for i, j in self.boxes():
+            if i == x and j == y:
+                continue
+            if ((x - 1) == i and y == j) or ((x + 1) == i and y == j):
+                if (x == i and (y - 1) == j) or (x == i and (y + 1) == j):
+                    return True
+
+    def deadp(self, problem):
+        map = problem.map
+
+        for x, y in self.boxes():
+            # self.dead = self.dead_corner(map, x, y)
+            self.dead = self.has_wall_box(map, x, y)
+            # if not self.dead:
+            #self.dead = self.has_box_box(x, y)
+
         return self.dead
+
     def all_adj(self, problem):
         if self.all_adj_cache is None:
             succ = []

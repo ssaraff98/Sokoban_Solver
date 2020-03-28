@@ -1,10 +1,10 @@
-import gc
 import util
 import os, sys
 import datetime, time
 import argparse
-import signal
 
+#checks for boxes on outer walls of the map.
+#If a box is along that wall without a target along the wall, it is a dead space
 def __stuck_on_wall__(s, problem):
     map = problem.map
     farthestL = 1000
@@ -25,7 +25,7 @@ def __stuck_on_wall__(s, problem):
                 if farthestD < y:
                     farthestD = y
 
-    for target in problem.targets:
+    for target in problem.targets: #checks for target along wall
         for box in boxes:
             if target[0] == box[0] or target[1] == box[1]:
                 return False
@@ -40,18 +40,60 @@ def __stuck_on_wall__(s, problem):
             return True
     else: return False
 
+def has_wall_box(s, map, x, y):
+    if map[x - 1][y].wall == True or map[x + 1][y].wall == True or map[x][y - 1].wall == True or map[x][y + 1].wall == True:
+        for i, j in s.boxes():
+            if i == x and j == y:
+                continue
+            if ((x - 1) == i and y == j) or ((x + 1) == i and y == j) or (x == i and (y - 1) == j) or (x == i and (y + 1) == j):
+                return True
+
+def has_box_box(s, x, y):
+    for i, j in s.boxes():
+        if i == x and j == y:
+            continue
+        if ((x - 1) == i and y == j) or ((x + 1) == i and y == j):
+            if (x == i and (y - 1) == j) or (x == i and (y + 1) == j):
+                return True
+
+def dead_corner(map, x, y):
+    left, right, up, down = False, False, False, False
+    if map[x - 1][y].wall == True:# and map[x - 1][y].target == False:
+        left = True
+    if map[x + 1][y].wall == True:# and map[x + 1][y].target == False:
+        right = True
+    if map[x][y - 1].wall == True:# and map[x][y - 1].target == False:
+        up = True
+    if map[x][y + 1].wall == True:# and map[x][y + 1].target == False:
+        down = True
+    # walls = 0
+
+    # if map[x - 1][y].wall == True:
+    #     walls += 1
+    # if map[x + 1][y].wall == True:
+    #     walls += 1
+    # if map[x][y - 1].wall == True:
+    #     walls += 1
+    # if map[x][y + 1].wall == True:
+    #     walls += 1
+    #
+    # if walls >= 3:
+    #     return True
+
+    if (left or right) and (up or down):
+        return True
+
 class SokobanState:
     # player: 2-tuple representing player location (coordinates)
     # boxes: list of 2-tuples indicating box locations
     def __init__(self, player, boxes):
         # self.data stores the state
-        self.data = tuple([player] + sorted(boxes)) #list of tuples
+        self.data = tuple([player] + sorted(boxes))
         # below are cache variables to avoid duplicated computation
-        self.all_adj_cache = None #used in all_adj
+        self.all_adj_cache = None
         self.adj = {}
         self.dead = None
         self.solved = None
-        #print(self.data)
     def __str__(self):
         return 'player: ' + str(self.player()) + ' boxes: ' + str(self.boxes())
     def __eq__(self, other):
@@ -60,63 +102,43 @@ class SokobanState:
         return self.data < other.data
     def __hash__(self):
         return hash(self.data)
+
     # return player location
     def player(self):
         return self.data[0]
+
     # return boxes locations
     def boxes(self):
         return self.data[1:]
-    def is_goal(self, problem): #if boxes are in targets return true, puzzle solved
+
+    def is_goal(self, problem):
         if self.solved is None:
             self.solved = all(problem.map[b[0]][b[1]].target for b in self.boxes())
         return self.solved
+
     def act(self, problem, act):
-        if act in self.adj: return self.adj[act] #check cache
+        if act in self.adj: return self.adj[act]
         else:
-            val = problem.valid_move(self,act) #val = (whether a move is valid, whether a box is moved, the next state)
-            self.adj[act] = val #adds to cache
+            val = problem.valid_move(self,act)
+            self.adj[act] = val
             return val
+
     def deadp(self, problem):
         map = problem.map
-        boxes = self.data[1:]
-        for box in boxes:
-            adjWalls = 0
-            if map[box[0] + 1][box[1]].wall is True:
-                adjWalls += 1
-            if map[box[0]][box[1] + 1].wall is True:
-                adjWalls += 1
-            if map[box[0] - 1][box[1]].wall is True:
-                adjWalls += 1
-            if map[box[0]][box[1] - 1].wall is True:
-                adjWalls += 1
-            if adjWalls >= 3:
+        for x, y in self.boxes():
+            if __stuck_on_wall__(self, problem):
                 self.dead = True
-                break
             else:
                 self.dead = False
-
-        if __stuck_on_wall__(self, problem):
-            self.dead = True
-        else: self.dead = False
-        #
-        # map = problem.map
-        # for i in range(len(map)):
-        #     for j in range(len(map[i])):
-        #         adjWalls = 0
-        #         if map[i][j].floor == '*':
-        #             if map[i + 1][j] == '#':
-        #                 adjWalls += 1
-        #             if map[i][j + 1] == '#':
-        #                 adjWalls += 1
-        #             if map[i - 1][j] == '#':
-        #                 adjWalls += 1
-        #             if map[i][j + 1] == '#':
-        #                 adjWalls += 1
-        #         if adjWalls >= 3:
-        #             self.dead = True
+            # self.dead = self.dead_corner(map, x, y)
+            if not self.dead:
+                self.dead = has_wall_box(self, map, x, y)
+            # if not self.dead:
+            #self.dead = self.has_box_box(x, y)
 
         return self.dead
-    def all_adj(self, problem): #checks up, down, left, right for valid move. If valid append to all_adj_cache
+
+    def all_adj(self, problem):
         if self.all_adj_cache is None:
             succ = []
             for move in 'udlr':
@@ -205,7 +227,8 @@ class SokobanProblem(util.SearchProblem):
                 target = self.map[row][col].target
                 box = (row,col) in s.boxes()
                 player = (row,col) == s.player()
-                if box and target: print(DrawObj.BOX_ON, end='')
+                if box and target:
+                    print(DrawObj.BOX_ON, end='')
                 elif player and target: print(DrawObj.PLAYER, end='')
                 elif target: print(DrawObj.TARGET, end='')
                 elif box: print(DrawObj.BOX_OFF, end='')

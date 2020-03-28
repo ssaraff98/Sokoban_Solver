@@ -43,7 +43,7 @@ class SokobanState:
             self.adj[act] = val
             return val
 
-    def dead_corner(self, map, x, y):
+    def stuck_in_corner(self, map, x, y):
         walls = 0
 
         if map[x - 1][y].wall == True:
@@ -94,7 +94,7 @@ class SokobanState:
         else:
             return False
 
-    def has_wall_box(self, map, x, y):
+    def stuck_between_wall_box(self, map, x, y):
         if map[x - 1][y].wall == True or map[x + 1][y].wall == True or map[x][y - 1].wall == True or map[x][y + 1].wall == True:
             for i, j in self.boxes():
                 if i == x and j == y:
@@ -102,7 +102,7 @@ class SokobanState:
                 if ((x - 1) == i and y == j) or ((x + 1) == i and y == j) or (x == i and (y - 1) == j) or (x == i and (y + 1) == j):
                     return True
 
-    def has_box_box(self, x, y):
+    def stuck_between_box_box(self, x, y):
         for i, j in self.boxes():
             if i == x and j == y:
                 continue
@@ -120,9 +120,10 @@ class SokobanState:
                 self.dead = False
 
             if not self.dead:
-                self.dead = self.has_wall_box(map, x, y)
+                self.dead = self.stuck_between_wall_box(map, x, y)
 
-            # self.dead = self.dead_corner(map, x, y)
+            if not self.dead:
+                self.dead = self.stuck_in_corner(map, x, y)
             # if not self.dead:
             #self.dead = self.has_box_box(x, y)
 

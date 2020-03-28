@@ -5,6 +5,50 @@ import datetime, time
 import argparse
 import signal
 
+def __stuck_on_wall__(s, problem):
+    map = problem.map
+    farthestL = 1000
+    farthestR = -1000
+    farthestU = 1000
+    farthestD = -1000
+    boxes = s.data[1:]
+
+    for x in range(len(map)):
+        for y in range(len(map[x])):
+            if map[x][y].wall is True:
+                # if farthestL is None:
+                #     farthestL = x
+                # elif farthestU is None:
+                #     farthestU = y
+                # elif farthestR is None:
+                #     farthestR = x
+                # elif farthestD is None:
+                #     farthestD = y
+
+                if farthestL > x:
+                    farthestL = x
+                if farthestU > y:
+                    farthestU = y
+                if farthestR < x:
+                    farthestR = x
+                if farthestD < y:
+                    farthestD = y
+
+    for target in problem.targets:
+        for box in boxes:
+            if target[0] == box[0] or target[1] == box[1]:
+                return False
+    for box in boxes:
+        if box[0] <= farthestL + 1:
+            return True
+        elif box[0] >= farthestR - 1:
+            return True
+        elif box[1] <= farthestU + 1:
+            return True
+        elif box[1] >= farthestD - 1:
+            return True
+    else: return False
+
 class SokobanState:
     # player: 2-tuple representing player location (coordinates)
     # boxes: list of 2-tuples indicating box locations
@@ -57,6 +101,12 @@ class SokobanState:
             if adjWalls >= 3:
                 self.dead = True
                 break
+            else:
+                self.dead = False
+
+        if __stuck_on_wall__(self, problem):
+            self.dead = True
+        else: self.dead = False
         #
         # map = problem.map
         # for i in range(len(map)):

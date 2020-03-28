@@ -1,7 +1,12 @@
+<<<<<<< HEAD
+=======
+import gc
+>>>>>>> d5b3f50cf17a950327f182b2e2b8ca67217a8281
 import util
 import os, sys
 import datetime, time
 import argparse
+<<<<<<< HEAD
 
 def __stuck_on_wall__(s, problem):
     map = problem.map
@@ -46,18 +51,31 @@ def __stuck_on_wall__(s, problem):
         elif box[1] >= farthestD - 1:
             return True
     else: return False
+=======
+import signal
+>>>>>>> d5b3f50cf17a950327f182b2e2b8ca67217a8281
 
 class SokobanState:
     # player: 2-tuple representing player location (coordinates)
     # boxes: list of 2-tuples indicating box locations
     def __init__(self, player, boxes):
         # self.data stores the state
+<<<<<<< HEAD
         self.data = tuple([player] + sorted(boxes))
         # below are cache variables to avoid duplicated computation
         self.all_adj_cache = None
         self.adj = {}
         self.dead = None
         self.solved = None
+=======
+        self.data = tuple([player] + sorted(boxes)) #list of tuples
+        # below are cache variables to avoid duplicated computation
+        self.all_adj_cache = None #used in all_adj
+        self.adj = {}
+        self.dead = None
+        self.solved = None
+        print(self.data)
+>>>>>>> d5b3f50cf17a950327f182b2e2b8ca67217a8281
     def __str__(self):
         return 'player: ' + str(self.player()) + ' boxes: ' + str(self.boxes())
     def __eq__(self, other):
@@ -66,6 +84,7 @@ class SokobanState:
         return self.data < other.data
     def __hash__(self):
         return hash(self.data)
+<<<<<<< HEAD
 
     # return player location
     def player(self):
@@ -147,6 +166,29 @@ class SokobanState:
         return self.dead
 
     def all_adj(self, problem):
+=======
+    # return player location
+    def player(self):
+        return self.data[0]
+    # return boxes locations
+    def boxes(self):
+        return self.data[1:]
+    def is_goal(self, problem): #if boxes are in targets return true, puzzle solved
+        if self.solved is None:
+            self.solved = all(problem.map[b[0]][b[1]].target for b in self.boxes())
+        return self.solved
+    def act(self, problem, act):
+        if act in self.adj: return self.adj[act] #check cache
+        else:
+            val = problem.valid_move(self,act) #val = (whether a move is valid, whether a box is moved, the next state)
+            self.adj[act] = val #adds to cache
+            return val
+    def deadp(self, problem):
+        if self.dead is None:
+            raise NotImplementedError('Override me')
+        return self.dead
+    def all_adj(self, problem): #checks up, down, left, right for valid move. If valid append to all_adj_cache
+>>>>>>> d5b3f50cf17a950327f182b2e2b8ca67217a8281
         if self.all_adj_cache is None:
             succ = []
             for move in 'udlr':
@@ -235,8 +277,12 @@ class SokobanProblem(util.SearchProblem):
                 target = self.map[row][col].target
                 box = (row,col) in s.boxes()
                 player = (row,col) == s.player()
+<<<<<<< HEAD
                 if box and target:
                     print(DrawObj.BOX_ON, end='')
+=======
+                if box and target: print(DrawObj.BOX_ON, end='')
+>>>>>>> d5b3f50cf17a950327f182b2e2b8ca67217a8281
                 elif player and target: print(DrawObj.PLAYER, end='')
                 elif target: print(DrawObj.TARGET, end='')
                 elif box: print(DrawObj.BOX_OFF, end='')

@@ -16,7 +16,7 @@ class SokobanState:
         self.adj = {}
         self.dead = None
         self.solved = None
-        print(self.data)
+        #print(self.data)
     def __str__(self):
         return 'player: ' + str(self.player()) + ' boxes: ' + str(self.boxes())
     def __eq__(self, other):
@@ -42,25 +42,38 @@ class SokobanState:
             self.adj[act] = val #adds to cache
             return val
     def deadp(self, problem):
-        dead = False
         map = problem.map
-        for i in range(len(map)):
-            for j in range(len(map[0])):
-                if map[i][j] == '*':
-                    adjWalls = 0
-                    if map[i + 1][j] == '#':
-                        adjWalls += 1
-                    if map[i][j + 1] == '#':
-                        adjWalls += 1
-                    if map[i - 1][j] == '#':
-                        adjWalls += 1
-                    if map[i][j + 1] == '#':
-                        adjWalls += 1
-                if adjWalls >= 3:
-                    dead = True
+        boxes = self.data[1:]
+        for box in boxes:
+            adjWalls = 0
+            if map[box[0] + 1][box[1]].wall is True:
+                adjWalls += 1
+            if map[box[0]][box[1] + 1].wall is True:
+                adjWalls += 1
+            if map[box[0] - 1][box[1]].wall is True:
+                adjWalls += 1
+            if map[box[0]][box[1] - 1].wall is True:
+                adjWalls += 1
+            if adjWalls >= 3:
+                self.dead = True
+                break
+        #
+        # map = problem.map
+        # for i in range(len(map)):
+        #     for j in range(len(map[i])):
+        #         adjWalls = 0
+        #         if map[i][j].floor == '*':
+        #             if map[i + 1][j] == '#':
+        #                 adjWalls += 1
+        #             if map[i][j + 1] == '#':
+        #                 adjWalls += 1
+        #             if map[i - 1][j] == '#':
+        #                 adjWalls += 1
+        #             if map[i][j + 1] == '#':
+        #                 adjWalls += 1
+        #         if adjWalls >= 3:
+        #             self.dead = True
 
-        if self.dead is None:
-            raise NotImplementedError('Override me')
         return self.dead
     def all_adj(self, problem): #checks up, down, left, right for valid move. If valid append to all_adj_cache
         if self.all_adj_cache is None:

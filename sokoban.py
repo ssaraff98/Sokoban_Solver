@@ -42,6 +42,23 @@ class SokobanState:
             self.adj[act] = val #adds to cache
             return val
     def deadp(self, problem):
+        dead = False
+        map = problem.map
+        for i in range(len(map)):
+            for j in range(len(map[0])):
+                if map[i][j] == '*':
+                    adjWalls = 0
+                    if map[i + 1][j] == '#':
+                        adjWalls += 1
+                    if map[i][j + 1] == '#':
+                        adjWalls += 1
+                    if map[i - 1][j] == '#':
+                        adjWalls += 1
+                    if map[i][j + 1] == '#':
+                        adjWalls += 1
+                if adjWalls >= 3:
+                    dead = True
+
         if self.dead is None:
             raise NotImplementedError('Override me')
         return self.dead

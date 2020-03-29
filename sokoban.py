@@ -191,7 +191,6 @@ class SokobanState:
             self.dead = True
             return True
 
-
         if __stuck_on_wall__(self, problem):
             self.dead = True
 
@@ -396,8 +395,31 @@ class SokobanProblemFaster(SokobanProblem):
     #     else:
     #         return True, False, SokobanState((x1,y1), s.boxes())
 
+    def __has_path__(self, point1, point2):
+        map = self.map
+        xdist = point1[0] - point2[0]
+        ydist = point1[1] - point2[1]
+        p = list(point1)
+        while xdist != 0 or ydist != 0:
+            if xdist > 0 and map[p[0] - 1][p[1]].floor is True: #box is left of player and there isn't a wall one tile left
+                p[0] = p[0] - 1
+                xdist = xdist - 1
+            elif xdist < 0 and map[p[0] + 1][p[1]].floor is True: #box is right of player and there isn't a wall one tile right
+                p[0] = p[0] + 1
+                xdist = xdist + 1
+            elif ydist > 0 and map[p[0]][p[1] - 1].floor is True: #box is below player and there isn't a wall one tile below
+                p[1] = p[1] - 1
+                ydist = ydist - 1
+            elif ydist < 0 and map[p[0]][p[1] + 1].floor is True: #box is above player and there isnt' a wall one tile above
+                p[1] = p[1] + 1
+                ydist = ydist + 1
+            else:
+                return False
+        return True
+
     def expand(self, s):
-        raise NotImplementedError('Override me')
+        for box in s.data[1:]:
+            print(self.__has_path__(s.data[0], box))
         # if self.dead_end(s):
         #     return []
         # return s.faster_all_adj(self)

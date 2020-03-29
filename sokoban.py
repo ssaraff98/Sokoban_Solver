@@ -29,7 +29,7 @@ def __check_for_wall_between__(map, point1, point2):
                 break
     return wallBetween
 
-#checks for boxes on outer walls of the map.
+#checks for boxes on outer walls of the map and for boxes in outer corners.
 #If a box is along that wall without a target along the wall, it is a dead space
 def __stuck_on_wall__(s, problem):
     map = problem.map
@@ -181,16 +181,10 @@ class SokobanState:
 
     def deadp(self, problem):
         map = problem.map
-        for x, y in self.boxes():
-            if __stuck_on_wall__(self, problem):
-                self.dead = True
-            else:
-                self.dead = False
-            # self.dead = self.dead_corner(map, x, y)
-            if not self.dead:
-                self.dead = has_wall_box(self, map, x, y)
-            # if not self.dead:
-            #self.dead = self.has_box_box(x, y)
+        self.dead = False
+        if __stuck_on_wall__(self, problem):
+            self.dead = True
+            return True
 
         return self.dead
 

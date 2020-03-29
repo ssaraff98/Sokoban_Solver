@@ -106,6 +106,12 @@ def __stuck_between_obstacles__(s, problem, x, y):
             if ((x - 1) == i and y == j) or ((x + 1) == i and y == j) or (x == i and (y - 1) == j) or (x == i and (y + 1) == j):
                 return True
 
+def __stuck_between_walls__(problem, x, y):
+    map = problem.map
+    if map[x - 1][y].wall == True or map[x + 1][y].wall == True:
+        if map[x][y - 1].wall == True or map[x][y + 1].wall == True:
+            return True
+
 # def has_box_box(s, x, y):
 #     for i, j in s.boxes():
 #         if i == x and j == y:
@@ -113,24 +119,6 @@ def __stuck_between_obstacles__(s, problem, x, y):
 #         if ((x - 1) == i and y == j) or ((x + 1) == i and y == j):
 #             if (x == i and (y - 1) == j) or (x == i and (y + 1) == j):
 #                 return True
-
-# def dead_corner(map, x, y):
-#     if map[x - 1][y].wall == True or map[x + 1][y].wall == True:
-#         if map[x][y - 1].wall == True or map[x][y + 1].wall == True:
-#             return True
-    # walls = 0
-
-    # if map[x - 1][y].wall == True:
-    #     walls += 1
-    # if map[x + 1][y].wall == True:
-    #     walls += 1
-    # if map[x][y - 1].wall == True:
-    #     walls += 1
-    # if map[x][y + 1].wall == True:
-    #     walls += 1
-    #
-    # if walls >= 3:
-    #     return True
 
 class SokobanState:
     # player: 2-tuple representing player location (coordinates)
@@ -178,8 +166,9 @@ class SokobanState:
             self.dead = True
         if not self.dead:
             for x, y in self.boxes():
-                self.dead = __stuck_between_obstacles__(self, problem, x, y)
-
+               self.dead = __stuck_between_obstacles__(self, problem, x, y)
+        if not self.dead:
+            self.dead = all(__stuck_between_walls__(problem, x, y) for x, y in self.boxes())
         return self.dead
 
     def all_adj(self, problem):

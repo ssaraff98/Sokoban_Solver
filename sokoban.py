@@ -2,6 +2,9 @@ import util
 import os, sys
 import datetime, time
 import argparse
+import copy
+
+deadStates = set()
 
 def __check_for_wall_between__(map, point1, point2):
     wallBetween = False
@@ -96,7 +99,11 @@ def __stuck_on_wall__(s, problem):
                             return True
     return False
 
-def has_wall_box(s, map, x, y):
+# Checks if a box is stuck between a wall and a box on adjacent sides
+# Returns true if check is true
+def __stuck_between_obstacles__(s, problem, x, y):
+    map = problem.map
+
     if map[x - 1][y].wall == True or map[x + 1][y].wall == True or map[x][y - 1].wall == True or map[x][y + 1].wall == True:
         for i, j in s.boxes():
             if i == x and j == y:
@@ -104,40 +111,24 @@ def has_wall_box(s, map, x, y):
             if ((x - 1) == i and y == j) or ((x + 1) == i and y == j) or (x == i and (y - 1) == j) or (x == i and (y + 1) == j):
                 return True
 
-def has_box_box(s, x, y):
+# Checks if a box is stuck between two walls on adjacent sides
+# Returns true if check is true
+def __stuck_between_walls__(problem, x, y):
+    map = problem.map
+    if map[x - 1][y].wall == True or map[x + 1][y].wall == True:
+        if map[x][y - 1].wall == True or map[x][y + 1].wall == True:
+            return True
+
+# Checks if a box is stuck between two boxes on adjacent sides
+# Returns true if check is true
+# !!!! Not implemented during run - FIX !!!!
+def __stuck_between_boxes__(s, problem, x, y):
     for i, j in s.boxes():
         if i == x and j == y:
             continue
         if ((x - 1) == i and y == j) or ((x + 1) == i and y == j):
             if (x == i and (y - 1) == j) or (x == i and (y + 1) == j):
                 return True
-
-def dead_corner(map, x, y):
-    left, right, up, down = False, False, False, False
-    if map[x - 1][y].wall == True:# and map[x - 1][y].target == False:
-        left = True
-    if map[x + 1][y].wall == True:# and map[x + 1][y].target == False:
-        right = True
-    if map[x][y - 1].wall == True:# and map[x][y - 1].target == False:
-        up = True
-    if map[x][y + 1].wall == True:# and map[x][y + 1].target == False:
-        down = True
-    # walls = 0
-
-    # if map[x - 1][y].wall == True:
-    #     walls += 1
-    # if map[x + 1][y].wall == True:
-    #     walls += 1
-    # if map[x][y - 1].wall == True:
-    #     walls += 1
-    # if map[x][y + 1].wall == True:
-    #     walls += 1
-    #
-    # if walls >= 3:
-    #     return True
-
-    if (left or right) and (up or down):
-        return True
 
 class SokobanState:
     # player: 2-tuple representing player location (coordinates)
@@ -179,13 +170,42 @@ class SokobanState:
             self.adj[act] = val
             return val
 
+    # def faster_act(self, problem, act, b):
+    #     if act in self.adj: return self.adj[act]
+    #     else:
+    #         val = problem.valid_push(self, act, b)
+    #         self.adj[act] = val
+    #         return val
+
     def deadp(self, problem):
-        map = problem.map
         self.dead = False
-        if __stuck_on_wall__(self, problem):
+
+        #caching dead states
+        boxes = self.data[1:]
+        boxList = []
+        for box in boxes:
+            boxList.append(box)
+        sorted(boxList)
+        boxes = tuple(boxList)
+        if boxes in deadStates:
             self.dead = True
             return True
 
+
+        if __stuck_on_wall__(self, problem):
+            self.dead = True
+
+        if not self.dead:
+            self.dead = all(__stuck_between_walls__(problem, x, y) for x, y in self.boxes())
+        # if not self.dead:
+        #     for x, y in self.boxes():
+        #        self.dead = __stuck_between_obstacles__(self, problem, x, y)
+        # if not self.dead:
+        #     for x, y in self.boxes():
+        #        self.dead = __stuck_between_boxes__(self, problem, x, y)
+
+        if self.dead is True:
+            deadStates.add(self.data[1:])
         return self.dead
 
     def all_adj(self, problem):
@@ -197,6 +217,22 @@ class SokobanState:
                     succ.append((move, nextS, 1))
             self.all_adj_cache = succ
         return self.all_adj_cache
+
+    # def faster_all_adj(self, problem):
+    #     if self.all_adj_cache is None:
+    #         for b in self.boxes():
+    #             succ = []
+    #             minimum_distance = 0
+    #             distance = 1
+    #             for move in 'udlr':
+    #                 valid, box_moved, nextS = self.faster_act(problem, move, b)
+    #                 if valid:
+    #                     distance += 1
+    #                     succ.append((move, nextS, distance))
+    #             if distance < minimum_distance:
+    #                 minimum_distance = distance
+    #                 self.all_adj_cache = succ
+    #     return self.all_adj_cache
 
 class MapTile:
     def __init__(self, wall=False, floor=False, target=False):
@@ -343,8 +379,28 @@ class SokobanProblemFaster(SokobanProblem):
     # Our solution to this problem affects or adds approximately 80 lines of     #
     # code in the file in total. Your can vary substantially from this.          #
     ##############################################################################
+    # def valid_push(self, s, move, b):
+    #     dx, dy = parse_move(move)
+    #     x1 = b[0] + dx
+    #     y1 = b[1] + dy
+    #     x2 = x1 + dx
+    #     y2 = y1 + dy
+    #     if self.map[x1][y1].wall:
+    #         return False, False, None
+    #     elif (x1,y1) in s.boxes():
+    #         if self.map[x2][y2].floor and (x2,y2) not in s.boxes():
+    #             return True, True, SokobanState((x1,y1),
+    #                 [b if b != (x1,y1) else (x2,y2) for b in s.boxes()])
+    #         else:
+    #             return False, False, None
+    #     else:
+    #         return True, False, SokobanState((x1,y1), s.boxes())
+
     def expand(self, s):
         raise NotImplementedError('Override me')
+        # if self.dead_end(s):
+        #     return []
+        # return s.faster_all_adj(self)
 
 class Heuristic:
     def __init__(self, problem):

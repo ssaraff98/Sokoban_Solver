@@ -124,8 +124,6 @@ class SokobanState:
 
             if not self.dead:
                 self.dead = self.stuck_in_corner(map, x, y)
-            # if not self.dead:
-            #self.dead = self.has_box_box(x, y)
 
         return self.dead
 

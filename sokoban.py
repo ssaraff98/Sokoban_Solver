@@ -3,6 +3,135 @@ import os, sys
 import datetime, time
 import argparse
 
+def __check_for_wall_between__(map, point1, point2):
+    wallBetween = False
+    if point1[1] == point2[1]:
+        if point1[0] > point2[0]:
+            start = point2[0]
+            end = point1[0]
+        else:
+            start = point1[0]
+            end = point2[0]
+        for i in range(start, end):
+            if map[i][point1[1]].wall is True:
+                wallBetween = True
+                break
+    elif point1[0] == point2[0]:
+        if point1[1] > point2[1]:
+            start = point2[1]
+            end = point1[1]
+        else:
+            start = point1[1]
+            end = point2[1]
+        for i in range(start, end):
+            if map[point1[0]][i].wall is True:
+                wallBetween = True
+                break
+    return wallBetween
+
+#checks for boxes on outer walls of the map and for boxes in outer corners.
+#If a box is along that wall without a target along the wall, it is a dead space
+def __stuck_on_wall__(s, problem):
+    map = problem.map
+    farthestL = 1000
+    farthestR = -1000
+    farthestU = 1000
+    farthestD = -1000
+    boxes = s.data[1:]
+
+    for x in range(len(map)):
+        for y in range(len(map[x])):
+            if map[x][y].wall is True:
+                if farthestL > x:
+                    farthestL = x
+                if farthestU > y:
+                    farthestU = y
+                if farthestR < x:
+                    farthestR = x
+                if farthestD < y:
+                    farthestD = y
+
+    targets = set(problem.targets)
+    for box in boxes:
+        if (box[0] <= farthestL + 1):#box is on L most wall
+            if box not in targets:
+                if map[box[0]][box[1] + 1].wall is True or map[box[0]][box[1] - 1].wall is True:
+                    return True
+                for target in problem.targets:
+                    if (target[0] == box[0] or target[1] == box[1]):
+                        if not __check_for_wall_between__(map, target, box):
+                           return False
+                        else:
+                            return True
+        elif box[0] >= farthestR - 1: #box is on R most wall
+            if box not in targets:
+                if map[box[0]][box[1] + 1].wall is True or map[box[0]][box[1] - 1].wall is True: #dead if there is a box above or below (in corner)
+                    return True
+                for target in problem.targets:
+                    if box not in targets and (target[0] == box[0] or target[1] == box[1]): #dead if there is a box above or below (in corner)
+                        if not __check_for_wall_between__(map, target, box):
+                           return False
+                        else:
+                            return True
+        elif box[1] <= farthestU + 1: #box is on U most wall
+            if box not in targets:
+                if map[box[0] + 1][box[1]].wall is True or map[box[0] - 1][box[1]].wall is True: #dead if there is a box to left or right (in corner)
+                    return True
+                for target in problem.targets:
+
+                    if (target[0] == box[0] or target[1] == box[1]):
+                        if not __check_for_wall_between__(map, target, box):
+                           return False
+                        else:
+                            return True
+        elif box[1] >= farthestD - 1: #box is on D most wall
+            if box not in targets:
+                if map[box[0] + 1][box[1]].wall is True or map[box[0] - 1][box[1]].wall is True: #dead if there is a box to left or right (in corner)
+                    return True
+                for target in problem.targets:
+                    if (target[0] == box[0] or target[1] == box[1]):
+                        if not __check_for_wall_between__(map, target, box):
+                           return False
+                        else:
+                            return True
+    return False
+
+def __stuck_between_obstacles__(s, problem, x, y):
+    map = problem.map
+
+    if map[x - 1][y].wall == True or map[x + 1][y].wall == True or map[x][y - 1].wall == True or map[x][y + 1].wall == True:
+        for i, j in s.boxes():
+            if i == x and j == y:
+                continue
+            if ((x - 1) == i and y == j) or ((x + 1) == i and y == j) or (x == i and (y - 1) == j) or (x == i and (y + 1) == j):
+                return True
+
+# def has_box_box(s, x, y):
+#     for i, j in s.boxes():
+#         if i == x and j == y:
+#             continue
+#         if ((x - 1) == i and y == j) or ((x + 1) == i and y == j):
+#             if (x == i and (y - 1) == j) or (x == i and (y + 1) == j):
+#                 return True
+
+# def dead_corner(map, x, y):
+#     if map[x - 1][y].wall == True or map[x + 1][y].wall == True:
+#         if map[x][y - 1].wall == True or map[x][y + 1].wall == True:
+#             return True
+    # walls = 0
+
+    # if map[x - 1][y].wall == True:
+    #     walls += 1
+    # if map[x + 1][y].wall == True:
+    #     walls += 1
+    # if map[x][y - 1].wall == True:
+    #     walls += 1
+    # if map[x][y + 1].wall == True:
+    #     walls += 1
+    #
+    # if walls >= 3:
+    #     return True
+
 class SokobanState:
     # player: 2-tuple representing player location (coordinates)
     # boxes: list of 2-tuples indicating box locations
@@ -43,87 +172,13 @@ class SokobanState:
             self.adj[act] = val
             return val
 
-    def stuck_in_corner(self, map, x, y):
-        walls = 0
-
-        if map[x - 1][y].wall == True:
-            walls += 1
-        if map[x + 1][y].wall == True:
-            walls += 1
-        if map[x][y - 1].wall == True:
-            walls += 1
-        if map[x][y + 1].wall == True:
-            walls += 1
-
-        if walls >= 3:
-            return True
-
-    def stuck_on_wall(self, problem):
-        map = problem.map
-        farthestL = 1000
-        farthestR = -1000
-        farthestU = 1000
-        farthestD = -1000
-
-        for x in range(len(map)):
-            for y in range(len(map[x])):
-                if map[x][y].wall is True:
-                    if farthestL > x:
-                        farthestL = x
-                    if farthestU > y:
-                        farthestU = y
-                    if farthestR < x:
-                        farthestR = x
-                    if farthestD < y:
-                        farthestD = y
-
-        for target in problem.targets:
-            for box in self.boxes():
-                if target[0] == box[0] or target[1] == box[1]:
-                    return False
-
-        for box in self.boxes():
-            if box[0] <= farthestL + 1:
-                return True
-            elif box[0] >= farthestR - 1:
-                return True
-            elif box[1] <= farthestU + 1:
-                return True
-            elif box[1] >= farthestD - 1:
-                return True
-        else:
-            return False
-
-    def stuck_between_wall_box(self, map, x, y):
-        if map[x - 1][y].wall == True or map[x + 1][y].wall == True or map[x][y - 1].wall == True or map[x][y + 1].wall == True:
-            for i, j in self.boxes():
-                if i == x and j == y:
-                    continue
-                if ((x - 1) == i and y == j) or ((x + 1) == i and y == j) or (x == i and (y - 1) == j) or (x == i and (y + 1) == j):
-                    return True
-
-    def stuck_between_box_box(self, x, y):
-        for i, j in self.boxes():
-            if i == x and j == y:
-                continue
-            if ((x - 1) == i and y == j) or ((x + 1) == i and y == j):
-                if (x == i and (y - 1) == j) or (x == i and (y + 1) == j):
-                    return True
-
     def deadp(self, problem):
-        map = problem.map
-
-        for x, y in self.boxes():
-            if self.stuck_on_wall(problem):
-                self.dead = True
-            else:
-                self.dead = False
-
-            if not self.dead:
-                self.dead = self.stuck_between_wall_box(map, x, y)
-
-            if not self.dead:
-                self.dead = self.stuck_in_corner(map, x, y)
+        self.dead = False
+        if __stuck_on_wall__(self, problem):
+            self.dead = True
+        if not self.dead:
+            for x, y in self.boxes():
+                self.dead = __stuck_between_obstacles__(self, problem, x, y)
 
         return self.dead
 

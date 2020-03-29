@@ -2,6 +2,9 @@ import util
 import os, sys
 import datetime, time
 import argparse
+import signal
+
+dead_states = []
 
 def __check_for_wall_between__(map, point1, point2):
     wallBetween = False
@@ -31,7 +34,7 @@ def __check_for_wall_between__(map, point1, point2):
 
 #checks for boxes on outer walls of the map and for boxes in outer corners.
 #If a box is along that wall without a target along the wall, it is a dead space
-def __stuck_on_wall__(s, problem):
+def __stuck_on_wall__(s, problem, b=None):
     map = problem.map
     farthestL = 1000
     farthestR = -1000
@@ -53,60 +56,92 @@ def __stuck_on_wall__(s, problem):
 
     targets = set(problem.targets)
     for box in boxes:
+        if b and b != box:
+            continue
         if (box[0] <= farthestL + 1):#box is on L most wall
             if box not in targets:
                 if map[box[0]][box[1] + 1].wall is True or map[box[0]][box[1] - 1].wall is True:
-                    return True
+                    return True, box
                 for target in problem.targets:
                     if (target[0] == box[0] or target[1] == box[1]):
                         if not __check_for_wall_between__(map, target, box):
-                           return False
+                           return False, box
                         else:
-                            return True
+                            return True, box
         elif box[0] >= farthestR - 1: #box is on R most wall
             if box not in targets:
                 if map[box[0]][box[1] + 1].wall is True or map[box[0]][box[1] - 1].wall is True: #dead if there is a box above or below (in corner)
-                    return True
+                    return True, box
                 for target in problem.targets:
                     if box not in targets and (target[0] == box[0] or target[1] == box[1]): #dead if there is a box above or below (in corner)
                         if not __check_for_wall_between__(map, target, box):
-                           return False
+                           return False, box
                         else:
-                            return True
+                            return True, box
         elif box[1] <= farthestU + 1: #box is on U most wall
             if box not in targets:
                 if map[box[0] + 1][box[1]].wall is True or map[box[0] - 1][box[1]].wall is True: #dead if there is a box to left or right (in corner)
-                    return True
+                    return True, box
                 for target in problem.targets:
 
                     if (target[0] == box[0] or target[1] == box[1]):
                         if not __check_for_wall_between__(map, target, box):
-                           return False
+                           return False, box
                         else:
-                            return True
+                            return True, box
         elif box[1] >= farthestD - 1: #box is on D most wall
             if box not in targets:
                 if map[box[0] + 1][box[1]].wall is True or map[box[0] - 1][box[1]].wall is True: #dead if there is a box to left or right (in corner)
-                    return True
+                    return True, box
                 for target in problem.targets:
                     if (target[0] == box[0] or target[1] == box[1]):
                         if not __check_for_wall_between__(map, target, box):
-                           return False
+                           return False, box
                         else:
-                            return True
-    return False
+                            return True, box
+    return False, box
 
 # Checks if a box is stuck between a wall and a box on adjacent sides
 # Returns true if check is true
 def __stuck_between_obstacles__(s, problem, x, y):
     map = problem.map
+    x_side, y_side = False, False
 
-    if map[x - 1][y].wall == True or map[x + 1][y].wall == True or map[x][y - 1].wall == True or map[x][y + 1].wall == True:
+    # if map[x - 1][y].wall == True or map[x + 1][y].wall == True or map[x][y - 1].wall == True or map[x][y + 1].wall == True:
+    #     for i, j in s.boxes():
+    #         if i == x and j == y:
+    #             continue
+    #         if ((x - 1) == i and y == j) or ((x + 1) == i and y == j) or (x == i and (y - 1) == j) or (x == i and (y + 1) == j):
+    #             return True
+
+    if map[x - 1][y].wall == True or map[x + 1][y].wall == True:
+        x_side = True
+    if map[x][y - 1].wall == True or map[x][y + 1].wall == True:
+        y_side = True
+
+    if x_side:
         for i, j in s.boxes():
             if i == x and j == y:
                 continue
-            if ((x - 1) == i and y == j) or ((x + 1) == i and y == j) or (x == i and (y - 1) == j) or (x == i and (y + 1) == j):
-                return True
+            if (x == i and (y - 1) == j) or (x == i and (y + 1) == j):
+                #if __stuck_on_wall__(s, problem, b=(i,j)):
+                if (i, j) in dead_states:
+                    dead_states.append((x, y))
+                    return True
+                # if __stuck_between_walls__(problem, i, j):
+                #     return True, (x, y)
+    elif y_side:
+        for i, j in s.boxes():
+            if i == x and j == y:
+                continue
+            if (x == i and (y - 1) == j) or (x == i and (y + 1) == j):
+                # if __stuck_on_wall__(s, problem, b=(i,j)):
+                if (i, j) in dead_states:
+                    dead_states.append((x, y))
+                    return True
+                # if __stuck_between_walls__(problem, i, j):
+                #     return True, (x, y)
+    return False
 
 # Checks if a box is stuck between two walls on adjacent sides
 # Returns true if check is true
@@ -114,6 +149,7 @@ def __stuck_between_walls__(problem, x, y):
     map = problem.map
     if map[x - 1][y].wall == True or map[x + 1][y].wall == True:
         if map[x][y - 1].wall == True or map[x][y + 1].wall == True:
+            dead_states.append((x, y))
             return True
 
 # Checks if a box is stuck between two boxes on adjacent sides
@@ -176,13 +212,13 @@ class SokobanState:
 
     def deadp(self, problem):
         self.dead = False
-        if __stuck_on_wall__(self, problem):
-            self.dead = True
+        self.dead, box = __stuck_on_wall__(self, problem)
         if not self.dead:
             self.dead = all(__stuck_between_walls__(problem, x, y) for x, y in self.boxes())
         if not self.dead:
             for x, y in self.boxes():
                self.dead = __stuck_between_obstacles__(self, problem, x, y)
+        dead_states.append(box)
         # if not self.dead:
         #     for x, y in self.boxes():
         #        self.dead = __stuck_between_boxes__(self, problem, x, y)

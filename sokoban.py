@@ -6,6 +6,24 @@ import copy
 
 deadStates = set()
 
+def __compute_corners__(problem):
+    deads = set()
+    map = problem.map
+    for i in range(1, len(map)): #starts at 1 because first row is outside bounds
+        for j in range(1, len(map[i]) - 1): #ends before the last y because it's outside bounds
+            if map[i][j].wall is True:
+                continue
+            try:
+                if map[i][j].target is False and (map[i - 1][j].wall is True or map[i + 1][j].wall is True): #block to left or right is wall and current block isn't target
+                    try:
+                        if map[i][j - 1].wall is True or map[i][j + 1].wall is True: #block above is wall
+                            deads.add((i, j)) #corner
+                            continue
+                    except: pass
+            except: pass
+
+    return deads
+
 def __check_for_wall_between__(map, point1, point2):
     wallBetween = False
     if point1[1] == point2[1]:
@@ -178,34 +196,35 @@ class SokobanState:
     #         return val
 
     def deadp(self, problem):
-        self.dead = False
-
-        #caching dead states
-        boxes = self.data[1:]
-        boxList = []
-        for box in boxes:
-            boxList.append(box)
-        sorted(boxList)
-        boxes = tuple(boxList)
-        if boxes in deadStates:
-            self.dead = True
-            return True
-
-        if __stuck_on_wall__(self, problem):
-            self.dead = True
-
-        if not self.dead:
-            self.dead = all(__stuck_between_walls__(problem, x, y) for x, y in self.boxes())
-        # if not self.dead:
-        #     for x, y in self.boxes():
-        #        self.dead = __stuck_between_obstacles__(self, problem, x, y)
-        # if not self.dead:
-        #     for x, y in self.boxes():
-        #        self.dead = __stuck_between_boxes__(self, problem, x, y)
-
-        if self.dead is True:
-            deadStates.add(self.data[1:])
         return self.dead
+        # self.dead = False
+        #
+        # #caching dead states
+        # boxes = self.data[1:]
+        # boxList = []
+        # for box in boxes:
+        #     boxList.append(box)
+        # sorted(boxList)
+        # boxes = tuple(boxList)
+        # if boxes in deadStates:
+        #     self.dead = True
+        #     return True
+        #
+        # if __stuck_on_wall__(self, problem):
+        #     self.dead = True
+        #
+        # if not self.dead:
+        #     self.dead = all(__stuck_between_walls__(problem, x, y) for x, y in self.boxes())
+        # # if not self.dead:
+        # #     for x, y in self.boxes():
+        # #        self.dead = __stuck_between_obstacles__(self, problem, x, y)
+        # # if not self.dead:
+        # #     for x, y in self.boxes():
+        # #        self.dead = __stuck_between_boxes__(self, problem, x, y)
+        #
+        # if self.dead is True:
+        #     deadStates.add(self.data[1:])
+        # return self.dead
 
     def all_adj(self, problem):
         if self.all_adj_cache is None:
@@ -268,6 +287,7 @@ class SokobanProblem(util.SearchProblem):
         self.numboxes = 0
         self.targets = []
         self.parse_map(map)
+        self.dead_ends = __compute_corners__(self)
 
     # parse the input string into game map
     # Wall              #
@@ -437,7 +457,37 @@ class Heuristic:
     # code in the file in total. Your can vary substantially from this.          #
     ##############################################################################
     def heuristic(self, s):
-        raise NotImplementedError('Override me')
+        def heuristic(self, s):
+            all_paths = {target: [] for target in self.problem.targets}
+            used_boxes = []
+            h = 0
+
+            # Finding distances from every box to all targets
+            for target in all_paths:
+                for box in s.boxes():
+                    distance = self.manhattan_distance(box, target)
+                    all_paths[target].append((box, distance))
+
+            for target, box_distances in all_paths.items():
+                # Sorting distances from box to the target in ascending order
+                boxes, distances = zip(*box_distances)
+                distances, boxes = zip(*sorted(zip(distances, boxes)))
+
+                minimum_distance = distances[0]
+                best_box = boxes[0]
+
+                # If box has already been used then move to next available box in list
+                if best_box in used_boxes:
+                    for box in boxes:
+                        if box not in used_boxes:
+                            best_box = box
+                    minimum_distance = distances[boxes.index(best_box)]
+
+                # Adding minimum distance to total heuristic
+                h += minimum_distance
+                used_boxes.append(best_box)
+
+            return h
 
     ##############################################################################
     # Problem 4: Better heuristic.                                               #

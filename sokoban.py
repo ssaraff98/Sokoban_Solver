@@ -16,7 +16,7 @@ def __compute_corners__(problem):
             try:
                 if map[i][j].target is False and (map[i - 1][j].wall is True or map[i + 1][j].wall is True): #block to left or right is wall and current block isn't target
                     try:
-                        if map[i][j - 1].wall is True or map[i][j + 1].wall is True: #block above is wall
+                        if map[i][j - 1].wall is True or map[i][j + 1].wall is True: #block above or below is wall
                             deads.add((i, j)) #corner
                             continue
                     except: pass
@@ -196,6 +196,10 @@ class SokobanState:
     #         return val
 
     def deadp(self, problem):
+        for box in self.data[1:]:
+            if box in problem.dead_ends:
+                self.dead = True
+                break
         return self.dead
         # self.dead = False
         #

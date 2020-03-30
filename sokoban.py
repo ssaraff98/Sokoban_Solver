@@ -1,10 +1,26 @@
 import util
 import os, sys
+import math
 import datetime, time
 import argparse
 import signal
 
-dead_states = []
+def __compute_corners__(problem):
+    deads = set()
+    map = problem.map
+    for i in range(1, len(map)): #starts at 1 because first row is outside bounds
+        for j in range(1, len(map[i]) - 1): #ends before the last y because it's outside bounds
+            if map[i][j].wall is True:
+                continue
+            try:
+                if map[i][j].target is False and (map[i - 1][j].wall is True or map[i + 1][j].wall is True): #block to left or right is wall and current block isn't target
+                    try:
+                        if map[i][j - 1].wall is True or map[i][j + 1].wall is True: #block above or below is wall
+                            deads.add((i, j)) #corner
+                            continue
+                    except: pass
+            except: pass
+    return deads
 
 def __check_for_wall_between__(map, point1, point2):
     wallBetween = False
@@ -59,58 +75,51 @@ def __stuck_on_wall__(s, problem):
         if (box[0] <= farthestL + 1):#box is on L most wall
             if box not in targets:
                 if map[box[0]][box[1] + 1].wall is True or map[box[0]][box[1] - 1].wall is True:
-                    return True, box
+                    return True
                 for target in problem.targets:
                     if (target[0] == box[0] or target[1] == box[1]):
                         if not __check_for_wall_between__(map, target, box):
-                           return False, box
+                           return False
                         else:
-                            return True, box
+                            return True
         elif box[0] >= farthestR - 1: #box is on R most wall
             if box not in targets:
                 if map[box[0]][box[1] + 1].wall is True or map[box[0]][box[1] - 1].wall is True: #dead if there is a box above or below (in corner)
-                    return True, box
+                    return True
                 for target in problem.targets:
                     if box not in targets and (target[0] == box[0] or target[1] == box[1]): #dead if there is a box above or below (in corner)
                         if not __check_for_wall_between__(map, target, box):
-                           return False, box
+                           return False
                         else:
-                            return True, box
+                            return True
         elif box[1] <= farthestU + 1: #box is on U most wall
             if box not in targets:
                 if map[box[0] + 1][box[1]].wall is True or map[box[0] - 1][box[1]].wall is True: #dead if there is a box to left or right (in corner)
-                    return True, box
+                    return True
                 for target in problem.targets:
 
                     if (target[0] == box[0] or target[1] == box[1]):
                         if not __check_for_wall_between__(map, target, box):
-                           return False, box
+                           return False
                         else:
-                            return True, box
+                            return True
         elif box[1] >= farthestD - 1: #box is on D most wall
             if box not in targets:
                 if map[box[0] + 1][box[1]].wall is True or map[box[0] - 1][box[1]].wall is True: #dead if there is a box to left or right (in corner)
-                    return True, box
+                    return True
                 for target in problem.targets:
                     if (target[0] == box[0] or target[1] == box[1]):
                         if not __check_for_wall_between__(map, target, box):
-                           return False, box
+                           return False
                         else:
-                            return True, box
-    return False, box
+                            return True
+    return False
 
 # Checks if a box is stuck between a wall and a box on adjacent sides
 # Returns true if check is true
 def __stuck_between_obstacles__(s, problem, x, y):
     map = problem.map
     x_side, y_side = False, False
-
-    # if map[x - 1][y].wall == True or map[x + 1][y].wall == True or map[x][y - 1].wall == True or map[x][y + 1].wall == True:
-    #     for i, j in s.boxes():
-    #         if i == x and j == y:
-    #             continue
-    #         if ((x - 1) == i and y == j) or ((x + 1) == i and y == j) or (x == i and (y - 1) == j) or (x == i and (y + 1) == j):
-    #             return True
 
     if map[x - 1][y].wall == True or map[x + 1][y].wall == True:
         x_side = True
@@ -122,33 +131,15 @@ def __stuck_between_obstacles__(s, problem, x, y):
             if i == x and j == y:
                 continue
             if (x == i and (y - 1) == j) or (x == i and (y + 1) == j):
-                #if __stuck_on_wall__(s, problem, b=(i,j)):
-                if (i, j) in dead_states:
-                    dead_states.append((x, y))
+                if (i, j) in problem.dead_ends:
                     return True
-                # if __stuck_between_walls__(problem, i, j):
-                #     return True, (x, y)
     elif y_side:
         for i, j in s.boxes():
             if i == x and j == y:
                 continue
             if (x == i and (y - 1) == j) or (x == i and (y + 1) == j):
-                # if __stuck_on_wall__(s, problem, b=(i,j)):
-                if (i, j) in dead_states:
-                    dead_states.append((x, y))
+                if (i, j) in problem.dead_ends:
                     return True
-                # if __stuck_between_walls__(problem, i, j):
-                #     return True, (x, y)
-    return False
-
-# Checks if a box is stuck between two walls on adjacent sides
-# Returns true if check is true
-def __stuck_between_walls__(problem, x, y):
-    map = problem.map
-    if map[x - 1][y].wall == True or map[x + 1][y].wall == True:
-        if map[x][y - 1].wall == True or map[x][y + 1].wall == True:
-            dead_states.append((x, y))
-            return True
     return False
 
 # Checks if a box is stuck between two boxes on adjacent sides
@@ -161,10 +152,9 @@ def __stuck_between_boxes__(s, problem, x, y):
         if ((x - 1) == i and y == j) or ((x + 1) == i and y == j):
             if (i, j) in dead_states:
                 if (x == i and (y - 1) == j) or (x == i and (y + 1) == j):
-                    if (i, j) in dead_states:
-                        dead_states.append((x, y))
+                    if (i, j) in problem.dead_ends:
                         return True
-    return False
+        return False
 
 class SokobanState:
     # player: 2-tuple representing player location (coordinates)
@@ -206,26 +196,40 @@ class SokobanState:
             self.adj[act] = val
             return val
 
-    # def faster_act(self, problem, act, b):
-    #     if act in self.adj: return self.adj[act]
-    #     else:
-    #         val = problem.valid_push(self, act, b)
-    #         self.adj[act] = val
-    #         return val
-
     def deadp(self, problem):
-        self.dead = False
-        self.dead, box = __stuck_on_wall__(self, problem)
-        dead_states.append(box)
-        if not self.dead:
-            self.dead = all(__stuck_between_walls__(problem, x, y) for x, y in self.boxes())
-        if not self.dead:
-            for x, y in self.boxes():
-               self.dead = __stuck_between_obstacles__(self, problem, x, y)
-        # if not self.dead:
-        #     for x, y in self.boxes():
-        #        self.dead = __stuck_between_boxes__(self, problem, x, y)
+        for box in self.data[1:]:
+            if box in problem.dead_ends:
+                self.dead = True
+                break
         return self.dead
+        # self.dead = False
+        #
+        # #caching dead states
+        # boxes = self.data[1:]
+        # boxList = []
+        # for box in boxes:
+        #     boxList.append(box)
+        # sorted(boxList)
+        # boxes = tuple(boxList)
+        # if boxes in deadStates:
+        #     self.dead = True
+        #     return True
+        #
+        # if __stuck_on_wall__(self, problem):
+        #     self.dead = True
+        #
+        # if not self.dead:
+        #     self.dead = all(__stuck_between_walls__(problem, x, y) for x, y in self.boxes())
+        # # if not self.dead:
+        # #     for x, y in self.boxes():
+        # #        self.dead = __stuck_between_obstacles__(self, problem, x, y)
+        # # if not self.dead:
+        # #     for x, y in self.boxes():
+        # #        self.dead = __stuck_between_boxes__(self, problem, x, y)
+        #
+        # if self.dead is True:
+        #     deadStates.add(self.data[1:])
+        # return self.dead
 
     def all_adj(self, problem):
         if self.all_adj_cache is None:
@@ -236,22 +240,6 @@ class SokobanState:
                     succ.append((move, nextS, 1))
             self.all_adj_cache = succ
         return self.all_adj_cache
-
-    # def faster_all_adj(self, problem):
-    #     if self.all_adj_cache is None:
-    #         for b in self.boxes():
-    #             succ = []
-    #             minimum_distance = 0
-    #             distance = 1
-    #             for move in 'udlr':
-    #                 valid, box_moved, nextS = self.faster_act(problem, move, b)
-    #                 if valid:
-    #                     distance += 1
-    #                     succ.append((move, nextS, distance))
-    #             if distance < minimum_distance:
-    #                 minimum_distance = distance
-    #                 self.all_adj_cache = succ
-    #     return self.all_adj_cache
 
 class MapTile:
     def __init__(self, wall=False, floor=False, target=False):
@@ -287,8 +275,8 @@ class SokobanProblem(util.SearchProblem):
         self.init_boxes = []
         self.numboxes = 0
         self.targets = []
-        self.dead_ends = set()
         self.parse_map(map)
+        self.dead_ends = __compute_corners__(self)
 
     # parse the input string into game map
     # Wall              #
@@ -372,7 +360,6 @@ class SokobanProblem(util.SearchProblem):
     # Our solution to this problem affects or adds approximately 50 lines of     #
     # code in the file in total. Your can vary substantially from this.          #
     ##############################################################################
-    # identify all dead tiles within the map, start with player location and make it visit every square in the map to see if its dead
     # detect dead end
     def dead_end(self, s):
         if not self.dead_detection:
@@ -448,38 +435,22 @@ class Heuristic:
     # Our solution to this problem affects or adds approximately 10 lines of     #
     # code in the file in total. Your can vary substantially from this.          #
     ##############################################################################
-
     # Heuristic is the sum of minimum distances from every box to a unique target without repetition
     def heuristic(self, s):
-        all_paths = {target: [] for target in self.problem.targets}
-        used_boxes = []
         h = 0
 
-        # Finding distances from every box to all targets
-        for target in all_paths:
-            for box in s.boxes():
+        for box in s.boxes():
+            if box in self.problem.targets:
+                continue
+
+            minimum_distance = math.inf
+            for target in self.problem.targets:
                 distance = self.manhattan_distance(box, target)
-                all_paths[target].append((box, distance))
 
-        for target, box_distances in all_paths.items():
-            # Sorting distances from box to the target in ascending order
-            boxes, distances = zip(*box_distances)
-            distances, boxes = zip(*sorted(zip(distances, boxes)))
+                if distance < minimum_distance:
+                    minimum_distance = distance
 
-            minimum_distance = distances[0]
-            best_box = boxes[0]
-
-            # If box has already been used then move to next available box in list
-            if best_box in used_boxes:
-                for box in boxes:
-                    if box not in used_boxes:
-                        best_box = box
-                minimum_distance = distances[boxes.index(best_box)]
-
-            # Adding minimum distance to total heuristic
             h += minimum_distance
-            used_boxes.append(best_box)
-
         return h
 
     ##############################################################################
@@ -493,23 +464,24 @@ class Heuristic:
     # code in the file in total. Your can vary substantially from this.          #
     ##############################################################################
     def heuristic2(self, s):
-        box_state = s.boxes()
-        if box_state in heuristic_table:
-            return heuristic_table[box_state]
+        h = 0
 
         for box in s.boxes():
-            x1, y1 = box
+            if box in self.problem.targets:
+                continue
 
-            left  = (x1 - 1, y1)
-            right = (x1 + 1, y1)
-            up    = (x1, y1 - 1)
-            down  = (x1, y1 + 1)
+            if box in self.problem.dead_ends:
+                return math.inf
 
-            if left in self.problem.dead_ends or right in self.problem.dead_ends or up in self.problem.dead_ends or down in self.problem.dead_ends:
-                heuristic_table[box_state] = math.inf
+            minimum_distance = math.inf
+            for target in self.problem.targets:
+                distance = self.manhattan_distance(box, target)
 
-            heuristic_table[box_state] = 0
-            return heuristic_table[box_state]
+                if distance < minimum_distance:
+                    minimum_distance = distance
+
+            h += minimum_distance
+        return h
 
 # solve sokoban map using specified algorithm
 def solve_sokoban(map, algorithm='ucs', dead_detection=False):

@@ -16,8 +16,6 @@ def __print_map_info__(problem):
             else:
                 print(f'i = {i} j = {j}')
 
-deadStates = set()
-
 def __compute_deads__(problem):
     #corner checking
     deads = set()

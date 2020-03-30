@@ -371,6 +371,7 @@ class SokobanProblem(util.SearchProblem):
     # Our solution to this problem affects or adds approximately 50 lines of     #
     # code in the file in total. Your can vary substantially from this.          #
     ##############################################################################
+    # identify all dead tiles within the map, start with player location and make it visit every square in the map to see if its dead
     # detect dead end
     def dead_end(self, s):
         if not self.dead_detection:
@@ -414,6 +415,14 @@ class SokobanProblemFaster(SokobanProblem):
     #             return False, False, None
     #     else:
     #         return True, False, SokobanState((x1,y1), s.boxes())
+    # which box, direction of push - action tuple, cost is total number of box pushes
+    # check if a box can be moved in any direction and how the box can get to the target and then back propagate to find player moved to the
+    # bfs to find player movement to the box
+    # parent node
+    # bfs explore descedants from parent node and asssign attribute to descendants. find destination and look at parent attributes ad find parent of parent and backtrack until you find path from source to destination
+    # use priority queue - import queue
+    # find if a box can be reached by a player. Dont need a path
+    # source node is current player's position then use bfs/dfs to find which box is reachable by player, box pushing is taken care of by ucs/a* and then use available action sequence which is box, move and next state from search and then use bfs/dfs again to reconstruct player movement
 
     def expand(self, s):
         raise NotImplementedError('Override me')
@@ -436,6 +445,7 @@ class Heuristic:
     # Our solution to this problem affects or adds approximately 10 lines of     #
     # code in the file in total. Your can vary substantially from this.          #
     ##############################################################################
+
     # Heuristic is the sum of minimum distances from every box to a unique target without repetition
     def heuristic(self, s):
         all_paths = {target: [] for target in self.problem.targets}
@@ -473,13 +483,20 @@ class Heuristic:
     # Problem 4: Better heuristic.                                               #
     # Implement a better and possibly more complicated heuristic that need not   #
     # always be admissible, but improves the search on more complicated Sokoban  #
-    # levels most of the time. Feel free to make any changes anywhere in the     # # code. Our heuristic does some significant work at problem initialization   #
+    # levels most of the time. Feel free to make any changes anywhere in the     #
+    # code. Our heuristic does some significant work at problem initialization   #
     # and caches it.                                                             #
     # Our solution to this problem affects or adds approximately 40 lines of     #
     # code in the file in total. Your can vary substantially from this.          #
     ##############################################################################
     def heuristic2(self, s):
-        raise NotImplementedError('Override me')
+        all_paths = {box: 0 for box in s.boxes()}
+
+        for box in s.boxes():
+            if s.deadp(self):
+                h = math.inf
+                return h
+
 
 # solve sokoban map using specified algorithm
 def solve_sokoban(map, algorithm='ucs', dead_detection=False):

@@ -34,7 +34,7 @@ def __check_for_wall_between__(map, point1, point2):
 
 #checks for boxes on outer walls of the map and for boxes in outer corners.
 #If a box is along that wall without a target along the wall, it is a dead space
-def __stuck_on_wall__(s, problem, b=None):
+def __stuck_on_wall__(s, problem):
     map = problem.map
     farthestL = 1000
     farthestR = -1000
@@ -56,8 +56,6 @@ def __stuck_on_wall__(s, problem, b=None):
 
     targets = set(problem.targets)
     for box in boxes:
-        if b and b != box:
-            continue
         if (box[0] <= farthestL + 1):#box is on L most wall
             if box not in targets:
                 if map[box[0]][box[1] + 1].wall is True or map[box[0]][box[1] - 1].wall is True:
@@ -151,6 +149,7 @@ def __stuck_between_walls__(problem, x, y):
         if map[x][y - 1].wall == True or map[x][y + 1].wall == True:
             dead_states.append((x, y))
             return True
+    return False
 
 # Checks if a box is stuck between two boxes on adjacent sides
 # Returns true if check is true
@@ -160,8 +159,12 @@ def __stuck_between_boxes__(s, problem, x, y):
         if i == x and j == y:
             continue
         if ((x - 1) == i and y == j) or ((x + 1) == i and y == j):
-            if (x == i and (y - 1) == j) or (x == i and (y + 1) == j):
-                return True
+            if (i, j) in dead_states:
+                if (x == i and (y - 1) == j) or (x == i and (y + 1) == j):
+                    if (i, j) in dead_states:
+                        dead_states.append((x, y))
+                        return True
+    return False
 
 class SokobanState:
     # player: 2-tuple representing player location (coordinates)
@@ -213,12 +216,12 @@ class SokobanState:
     def deadp(self, problem):
         self.dead = False
         self.dead, box = __stuck_on_wall__(self, problem)
+        dead_states.append(box)
         if not self.dead:
             self.dead = all(__stuck_between_walls__(problem, x, y) for x, y in self.boxes())
         if not self.dead:
             for x, y in self.boxes():
                self.dead = __stuck_between_obstacles__(self, problem, x, y)
-        dead_states.append(box)
         # if not self.dead:
         #     for x, y in self.boxes():
         #        self.dead = __stuck_between_boxes__(self, problem, x, y)
@@ -422,6 +425,9 @@ class Heuristic:
     def __init__(self, problem):
         self.problem = problem
 
+    def manhattan_distance(self, coordinate1, coordinate2):
+        return abs(coordinate1[0] - coordinate2[0]) + abs(coordinate1[1] - coordinate2[1])
+
     ##############################################################################
     # Problem 3: Simple admissible heuristic                                     #
     # Implement a simple admissible heuristic function that can be computed      #
@@ -430,8 +436,38 @@ class Heuristic:
     # Our solution to this problem affects or adds approximately 10 lines of     #
     # code in the file in total. Your can vary substantially from this.          #
     ##############################################################################
+    # Heuristic is the sum of minimum distances from every box to a unique target without repetition
     def heuristic(self, s):
-        raise NotImplementedError('Override me')
+        all_paths = {target: [] for target in self.problem.targets}
+        used_boxes = []
+        h = 0
+
+        # Finding distances from every box to all targets
+        for target in all_paths:
+            for box in s.boxes():
+                distance = self.manhattan_distance(box, target)
+                all_paths[target].append((box, distance))
+
+        for target, box_distances in all_paths.items():
+            # Sorting distances from box to the target in ascending order
+            boxes, distances = zip(*box_distances)
+            distances, boxes = zip(*sorted(zip(distances, boxes)))
+
+            minimum_distance = distances[0]
+            best_box = boxes[0]
+
+            # If box has already been used then move to next available box in list
+            if best_box in used_boxes:
+                for box in boxes:
+                    if box not in used_boxes:
+                        best_box = box
+                minimum_distance = distances[boxes.index(best_box)]
+
+            # Adding minimum distance to total heuristic
+            h += minimum_distance
+            used_boxes.append(best_box)
+
+        return h
 
     ##############################################################################
     # Problem 4: Better heuristic.                                               #

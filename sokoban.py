@@ -287,6 +287,7 @@ class SokobanProblem(util.SearchProblem):
         self.init_boxes = []
         self.numboxes = 0
         self.targets = []
+        self.dead_ends = set()
         self.parse_map(map)
 
     # parse the input string into game map
@@ -430,6 +431,8 @@ class SokobanProblemFaster(SokobanProblem):
         #     return []
         # return s.faster_all_adj(self)
 
+heuristic_table = {}
+
 class Heuristic:
     def __init__(self, problem):
         self.problem = problem
@@ -490,13 +493,23 @@ class Heuristic:
     # code in the file in total. Your can vary substantially from this.          #
     ##############################################################################
     def heuristic2(self, s):
-        all_paths = {box: 0 for box in s.boxes()}
+        box_state = s.boxes()
+        if box_state in heuristic_table:
+            return heuristic_table[box_state]
 
         for box in s.boxes():
-            if s.deadp(self):
-                h = math.inf
-                return h
+            x1, y1 = box
 
+            left  = (x1 - 1, y1)
+            right = (x1 + 1, y1)
+            up    = (x1, y1 - 1)
+            down  = (x1, y1 + 1)
+
+            if left in self.problem.dead_ends or right in self.problem.dead_ends or up in self.problem.dead_ends or down in self.problem.dead_ends:
+                heuristic_table[box_state] = math.inf
+
+            heuristic_table[box_state] = 0
+            return heuristic_table[box_state]
 
 # solve sokoban map using specified algorithm
 def solve_sokoban(map, algorithm='ucs', dead_detection=False):

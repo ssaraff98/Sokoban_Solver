@@ -4,6 +4,7 @@ import datetime, time
 import argparse
 import copy
 import math
+from queue import Queue
 import signal, gc
 
 def __print_map_info__(problem):
@@ -214,7 +215,7 @@ class SokobanState:
     def act(self, problem, act):
         if act in self.adj: return self.adj[act]
         else:
-            val = problem.valid_move(self,act)
+            val = problem.valid_move(self, act)
             self.adj[act] = val
             return val
 
@@ -225,7 +226,6 @@ class SokobanState:
                 self.dead = True
                 break
         return self.dead
-
 
     def all_adj(self, problem):
         if self.all_adj_cache is None:
@@ -373,6 +373,26 @@ class SokobanProblem(util.SearchProblem):
             return []
         return s.all_adj(self)
 
+def __depth_first_search__(s, problem, goal):
+    start_state = problem.init_player
+
+    frontier = Queue()
+    frontier.put(start_state)
+
+    while frontier:
+        position = frontier.get()
+        for move in 'udlr':
+            if move in s.adj:
+                valid, _, next_state = self.adj[move]
+            else:
+                valid, _, next_state = problem.valid_move(s, move, position)
+            if valid:
+                next_position = next_state.player()
+                if next_position == goal:
+                    return True, (move, next_state, 1)
+                frontier.put(next_position)
+    return False, []
+
 class SokobanProblemFaster(SokobanProblem):
     ##############################################################################
     # Problem 2: Action compression                                              #
@@ -383,22 +403,7 @@ class SokobanProblemFaster(SokobanProblem):
     # Our solution to this problem affects or adds approximately 80 lines of     #
     # code in the file in total. Your can vary substantially from this.          #
     ##############################################################################
-    # def valid_push(self, s, move, b):
-    #     dx, dy = parse_move(move)
-    #     x1 = b[0] + dx
-    #     y1 = b[1] + dy
-    #     x2 = x1 + dx
-    #     y2 = y1 + dy
-    #     if self.map[x1][y1].wall:
-    #         return False, False, None
-    #     elif (x1,y1) in s.boxes():
-    #         if self.map[x2][y2].floor and (x2,y2) not in s.boxes():
-    #             return True, True, SokobanState((x1,y1),
-    #                 [b if b != (x1,y1) else (x2,y2) for b in s.boxes()])
-    #         else:
-    #             return False, False, None
-    #     else:
-    #         return True, False, SokobanState((x1,y1), s.boxes())
+
     # which box, direction of push - action tuple, cost is total number of box pushes
     # check if a box can be moved in any direction and how the box can get to the target and then back propagate to find player moved to the
     # bfs to find player movement to the box
@@ -409,10 +414,14 @@ class SokobanProblemFaster(SokobanProblem):
     # source node is current player's position then use bfs/dfs to find which box is reachable by player, box pushing is taken care of by ucs/a* and then use available action sequence which is box, move and next state from search and then use bfs/dfs again to reconstruct player movement
 
     def expand(self, s):
-        raise NotImplementedError('Override me')
-        # if self.dead_end(s):
-        #     return []
-        # return s.faster_all_adj(self)
+        if self.dead_end(s):
+            return []
+        succ = []
+        for box in s.boxes():
+            can_reach, actions = __depth_first_search__(s, self, box)
+            if can_reach:
+                succ.append(actions)
+        return succ
 
 def __manhattan_distance__(coordinate1, coordinate2):
     return abs(coordinate1[0] - coordinate2[0]) + abs(coordinate1[1] - coordinate2[1])
@@ -429,6 +438,7 @@ class Heuristic:
     # Our solution to this problem affects or adds approximately 10 lines of     #
     # code in the file in total. Your can vary substantially from this.          #
     ##############################################################################
+
     # Heuristic is the sum of minimum distances from every box to a target
     def heuristic(self, s):
         h = 0
@@ -456,7 +466,8 @@ class Heuristic:
     # Our solution to this problem affects or adds approximately 40 lines of     #
     # code in the file in total. Your can vary substantially from this.          #
     ##############################################################################
-    # Heuristic is the sum of minimum distances from every box to a unique target
+
+    # Heuristic is the sum of minimum distance from every box to a unique target
     # If box is in a dead state then heuristic is inifinity
     def heuristic2(self, s):
         unused_targets = self.problem.targets.copy()

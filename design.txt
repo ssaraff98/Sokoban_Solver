@@ -4,6 +4,22 @@
 
 'Level improving from ucs to ucs -d
 Level p5-level-1
+#############
+# . #   #   #
+#   #   #   #
+#   #   #   #
+## ### ### ##
+#   #   #   #
+#     $   $ #
+#   #   #   #
+## ### ### ##
+#   #   #   #
+#   #   # @ #
+# . #   #   #
+#############
+'Our dead end detection looks for corners and walls that connect these corners
+'without stopping or having a target along the path. This level is as full
+'as possible with those kinds of walls
 
 'Level improving from ucs -d to f -d
 Level p5-level-2

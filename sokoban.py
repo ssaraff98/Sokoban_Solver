@@ -4,8 +4,8 @@ import datetime, time
 import argparse
 import copy
 import math
-from queue import Queue
 import signal, gc
+from queue import Queue
 
 def __print_map_info__(problem):
     map = problem.map
@@ -373,25 +373,29 @@ class SokobanProblem(util.SearchProblem):
             return []
         return s.all_adj(self)
 
-def __depth_first_search__(s, problem, goal):
-    start_state = problem.init_player
+def __find_box_path__(s, problem):
+    start_state = s.player()
+    succ = []
+    explored = []
 
     frontier = Queue()
     frontier.put(start_state)
 
-    while frontier:
-        position = frontier.get()
+    while not frontier.empty():
+        state = frontier.get()
+        if state in explored:
+            continue
+        explored.append(state)
+
         for move in 'udlr':
-            if move in s.adj:
-                valid, _, next_state = self.adj[move]
-            else:
-                valid, _, next_state = problem.valid_move(s, move, position)
-            if valid:
+            valid, box_moved, next_state = problem.valid_move(s, move, state)
+            if box_moved:
+                succ.append((move, next_state, 1))
+            elif valid:
                 next_position = next_state.player()
-                if next_position == goal:
-                    return True, (move, next_state, 1)
-                frontier.put(next_position)
-    return False, []
+                if next_position not in explored:
+                    frontier.put(next_position)
+    return succ
 
 class SokobanProblemFaster(SokobanProblem):
     ##############################################################################
@@ -416,12 +420,9 @@ class SokobanProblemFaster(SokobanProblem):
     def expand(self, s):
         if self.dead_end(s):
             return []
-        succ = []
-        for box in s.boxes():
-            can_reach, actions = __depth_first_search__(s, self, box)
-            if can_reach:
-                succ.append(actions)
-        return succ
+
+        box_actions = __find_box_path__(s, self)
+        return box_actions
 
 def __manhattan_distance__(coordinate1, coordinate2):
     return abs(coordinate1[0] - coordinate2[0]) + abs(coordinate1[1] - coordinate2[1])

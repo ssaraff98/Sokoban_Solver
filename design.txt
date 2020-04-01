@@ -35,6 +35,9 @@ Level p5-level-3
 # ##    #
 ##      #
 #########
+'Our first heuristic calculates the minimum distance between a box and a target using
+'Manhattan distance. This level keeps the boxes close to the targets so that
+'the heuristic makes the search faster
 
 'Level improving from fa -d to fa2 -d
 Level p5-level-4
@@ -47,6 +50,11 @@ Level p5-level-4
 ##     ##
 #  . $  #
 #########
+'Our second heuristic calculates the minimum distance between a box and a unique
+'target using Manhattan distance but also takes into account dead positions and
+'distance between a player and a box. This level has multiple targets close together
+'and boxes relatively close to those targets. It also has many possible dead end
+'states. The boxes are accessible to the player in order to compress action sequences
 
 'Optional: level for the Sokoban contest
 Level p5-contest

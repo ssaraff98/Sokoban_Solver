@@ -329,7 +329,7 @@ class SokobanProblem(util.SearchProblem):
 
     # decide if a move is valid
     # return: (whether a move is valid, whether a box is moved, the next state)
-    def valid_move(self, s, move, p=None):
+    def valid_move(self, s, move, p=None, f=False):
         if p is None:
             p = s.player()
         dx,dy = parse_move(move)
@@ -341,6 +341,8 @@ class SokobanProblem(util.SearchProblem):
             return False, False, None
         elif (x1,y1) in s.boxes():
             if self.map[x2][y2].floor and (x2,y2) not in s.boxes():
+                if f:
+                    return True, (x1, y1), SokobanState((x1, y1), [b if b != (x1, y1) else (x2, y2) for b in s.boxes()])
                 return True, True, SokobanState((x1,y1),
                     [b if b != (x1,y1) else (x2,y2) for b in s.boxes()])
             else:
@@ -388,9 +390,9 @@ def __find_box_path__(s, problem):
         explored.append(state)
 
         for move in 'udlr':
-            valid, box_moved, next_state = problem.valid_move(s, move, state)
+            valid, box_moved, next_state = problem.valid_move(s, move, state, f=True)
             if box_moved:
-                succ.append((move, next_state, 1))
+                succ.append(((box_moved, move), next_state, 1))
             elif valid:
                 next_position = next_state.player()
                 if next_position not in explored:
@@ -407,15 +409,6 @@ class SokobanProblemFaster(SokobanProblem):
     # Our solution to this problem affects or adds approximately 80 lines of     #
     # code in the file in total. Your can vary substantially from this.          #
     ##############################################################################
-
-    # which box, direction of push - action tuple, cost is total number of box pushes
-    # check if a box can be moved in any direction and how the box can get to the target and then back propagate to find player moved to the
-    # bfs to find player movement to the box
-    # parent node
-    # bfs explore descedants from parent node and asssign attribute to descendants. find destination and look at parent attributes ad find parent of parent and backtrack until you find path from source to destination
-    # use priority queue - import queue
-    # find if a box can be reached by a player. Dont need a path
-    # source node is current player's position then use bfs/dfs to find which box is reachable by player, box pushing is taken care of by ucs/a* and then use available action sequence which is box, move and next state from search and then use bfs/dfs again to reconstruct player movement
 
     def expand(self, s):
         if self.dead_end(s):
@@ -469,6 +462,7 @@ class Heuristic:
     ##############################################################################
 
     # Heuristic is the sum of minimum distance from every box to a unique target
+    # and distance between each box and the player
     # If box is in a dead state then heuristic is inifinity
     def heuristic2(self, s):
         unused_targets = self.problem.targets.copy()
@@ -480,6 +474,8 @@ class Heuristic:
 
             if box in self.problem.dead_ends:
                 return math.inf
+
+            h += __manhattan_distance__(box, s.player())
 
             minimum_distance = math.inf
             best_target = None

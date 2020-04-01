@@ -510,6 +510,10 @@ def solve_sokoban(map, algorithm='ucs', dead_detection=False):
     if search.actions is not None:
         print('length {} soln is {}'.format(len(search.actions), search.actions))
     if 'f' in algorithm:
+        # action = []
+        # for box, move in search.actions.reverse():
+        #     action.append(move)
+        #     previous_state = box
         return search.totalCost, search.actions, search.numStatesExplored
     else:
         return search.totalCost, search.actions, search.numStatesExplored

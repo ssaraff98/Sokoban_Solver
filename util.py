@@ -89,7 +89,10 @@ class AStarSearch(SearchAlgorithm):
 
             # Expand from |state| to new successor states,
             # updating the frontier with each newState.
-            for action, newState, cost in problem.expand(state):
+            for move in problem.expand(state):
+                action = move[0]
+                newState = move[1]
+                cost = move[2]
                 if self.verbose >= 3:
                     print(("  Action %s => %s with cost %s + %s + %s" % (action, newState, pastCost, cost, estimatedCost)))
                 newPastCost = pastCost + cost

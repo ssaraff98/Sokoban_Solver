@@ -18,6 +18,16 @@ def __print_map_info__(problem):
             else:
                 print(f'i = {i} j = {j}')
 
+
+def __object_at__(s, problem, p):
+    map = problem.map
+    if map[p[0]][p[1]].wall is True:
+        return True
+    for box in s.data[1:]:
+        if box == p:
+            return True
+    return False
+
 def __compute_deads__(problem):
     #corner checking
     deads = set()
@@ -221,10 +231,12 @@ class SokobanState:
 
     def deadp(self, problem):
         self.dead = False
+        #self.dead = problem.__box_cant_move__(self)
         for box in self.data[1:]:
             if box in problem.dead_ends:
                 self.dead = True
                 break
+
         return self.dead
 
     def all_adj(self, problem):
@@ -348,7 +360,20 @@ class SokobanProblem(util.SearchProblem):
         else:
             return True, False, SokobanState((x1,y1), s.boxes())
 
-    ##############################################################################
+    def __box_cant_move__(self, s):
+        map = self.map
+        boxes = s.data[1:]
+        for box in boxes:
+            if __object_at__(s, self, (box[0] + 1, box[1])) or __object_at__(s, self, (box[0] - 1, box[1])):
+                if __object_at__(s, self, (box[0], box[1] + 1)) or __object_at__(s, self, (box[0], box[1] - 1)):
+                    return True
+            elif __object_at__(s, self, (box[0], box[1] + 1)) or __object_at__(s, self, (box[0], box[1] - 1)):
+                if __object_at__(s, self, (box[0] + 1, box[1])) or __object_at__(s, self, (box[0] - 1, box[1])):
+                    return True
+        return False
+
+
+            ##############################################################################
     # Problem 1: Dead end detection                                              #
     # Modify the function below. We are calling the deadp function for the state #
     # so the result can be cached in that state. Feel free to modify any part of #

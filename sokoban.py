@@ -511,9 +511,9 @@ def solve_sokoban(map, algorithm='ucs', dead_detection=False):
         print('length {} soln is {}'.format(len(search.actions), search.actions))
     if 'f' in algorithm:
         actions = []
-        targetPos = problem.init_player
+        initPos = problem.init_player
         frontier = Queue()
-        frontier.put(search.actions.reverse())
+        frontier.put(initPos)
 
         while frontier:
             position, action = frontier.get()
